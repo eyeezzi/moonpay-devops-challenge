@@ -10,3 +10,9 @@ node_modules
 # Ignore .next and .turbo folders
 .next
 .turbo
+
+# Ignore generated Prisma client (regenerated during build)
+prisma/generated
+
+# Ignore documentation
+*.md
