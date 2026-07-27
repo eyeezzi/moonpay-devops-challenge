@@ -1,8 +1,7 @@
 resource "google_service_account" "app_runtime" {
-  account_id   = "app-runtime"
-  display_name = "GKE application runtime service account"
-
-  depends_on = [google_project_service.required]
+  account_id   = var.app_runtime_sa_account_id
+  display_name = "GKE application runtime (${var.environment})"
+  project      = var.project_id
 }
 
 locals {

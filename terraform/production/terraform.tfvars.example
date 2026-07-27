@@ -1,0 +1,2 @@
+# github_repository = "eyeezzi/moonpay-devops-challenge"
+# github_token    = "ghp_..." # classic PAT with repo scope, or fine-grained with Actions+Secrets write
