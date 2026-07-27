@@ -50,6 +50,7 @@ jobs:
       - name: Run database migrations
         env:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_PRISMA_URL: postgresql://${{ vars.DB_USER }}:${{ secrets.DB_PASSWORD }}@127.0.0.1:5432/${{ vars.DB_NAME }}?schema=public
         run: |
           curl -fsSL -o cloud-sql-proxy \
             https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.3/cloud-sql-proxy.linux.amd64
@@ -60,8 +61,7 @@ jobs:
           sleep 3
           corepack enable
           pnpm install --frozen-lockfile
-          POSTGRES_PRISMA_URL="postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}?schema=public" \
-            pnpm exec prisma migrate deploy
+          pnpm exec prisma migrate deploy
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
