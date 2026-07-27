@@ -1,0 +1,124 @@
+name: Production Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: >-
+    ${{ github.event_name == 'pull_request'
+        && format('production-deploy-pr-{0}', github.event.pull_request.number)
+        || 'production-deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+  GCP_SERVICE_ACCOUNT: ${{ vars.PROD_GCP_SERVICE_ACCOUNT }}
+  ARTIFACT_REGISTRY_URL: ${{ vars.ARTIFACT_REGISTRY_URL }}
+  CLOUD_SQL_CONNECTION_NAME: ${{ vars.PROD_CLOUD_SQL_CONNECTION_NAME }}
+  DB_USER: ${{ vars.PROD_DB_USER }}
+  DB_NAME: ${{ vars.PROD_DB_NAME }}
+  GKE_CLUSTER_NAME: ${{ vars.PROD_GKE_CLUSTER_NAME }}
+  GKE_CLUSTER_LOCATION: ${{ vars.PROD_GKE_CLUSTER_LOCATION }}
+  APP_RUNTIME_GCP_SA: ${{ vars.PROD_APP_RUNTIME_GCP_SA }}
+  IMAGE_TAG: >-
+    ${{ github.event_name == 'pull_request'
+        && format('pr-{0}-{1}', github.event.pull_request.number, github.sha)
+        || github.sha }}
+  DEPLOYMENT_NAME: moonpay-app
+  NAMESPACE: production
+  USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run database migrations
+        env:
+          DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+          POSTGRES_PRISMA_URL: postgresql://${{ vars.PROD_DB_USER }}:${{ secrets.PROD_DB_PASSWORD }}@127.0.0.1:5432/${{ vars.PROD_DB_NAME }}?schema=public
+        run: |
+          curl -fsSL -o cloud-sql-proxy \
+            https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.3/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy "${CLOUD_SQL_CONNECTION_NAME}" --port 5432 &
+          PROXY_PID=$!
+          trap "kill ${PROXY_PID}" EXIT
+          sleep 3
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm exec prisma migrate deploy
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.ARTIFACT_REGISTRY_URL }}:${{ env.IMAGE_TAG }}
+          provenance: false
+          sbom: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials "${GKE_CLUSTER_NAME}" \
+            --zone="${GKE_CLUSTER_LOCATION}" \
+            --project="${GCP_PROJECT_ID}"
+
+      - name: Deploy to GKE
+        env:
+          DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+        run: |
+          kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic db-credentials \
+            --namespace="${NAMESPACE}" \
+            --from-literal=password="${DB_PASSWORD}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          helm upgrade --install "${DEPLOYMENT_NAME}" ./helm/moonpay-app \
+            --namespace "${NAMESPACE}" \
+            --create-namespace \
+            -f ./helm/moonpay-app/values-production.yaml \
+            --set image.repository="${ARTIFACT_REGISTRY_URL}" \
+            --set image.tag="${IMAGE_TAG}" \
+            --set cloudSql.connectionName="${CLOUD_SQL_CONNECTION_NAME}" \
+            --set db.user="${DB_USER}" \
+            --set db.name="${DB_NAME}" \
+            --set serviceAccount.annotations."iam\.gke\.io/gcp-service-account"="${APP_RUNTIME_GCP_SA}" \
+            --wait --timeout 120s
