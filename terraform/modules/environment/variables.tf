@@ -79,6 +79,12 @@ variable "gke_zone" {
   type        = string
 }
 
+variable "gke_deletion_protection" {
+  description = "Prevent accidental deletion of the GKE cluster"
+  type        = bool
+  default     = true
+}
+
 variable "gke_node_machine_type" {
   description = "Machine type for GKE node pool"
   type        = string
