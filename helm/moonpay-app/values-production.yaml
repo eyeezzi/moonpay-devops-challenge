@@ -1,0 +1,11 @@
+namespace: production
+nameOverride: moonpay-app
+
+service:
+  type: LoadBalancer
+
+pr:
+  enabled: false
+
+cloudSql:
+  connectionName: ""

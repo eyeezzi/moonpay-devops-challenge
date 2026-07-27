@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "moonpay-app.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "moonpay-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "moonpay-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "moonpay-app.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          env:
+            - name: DB_USER
+              value: {{ .Values.db.user | quote }}
+            - name: DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.existingSecret }}
+                  key: {{ .Values.db.passwordKey }}
+            - name: POSTGRES_PRISMA_URL
+              value: "postgresql://$(DB_USER):$(DB_PASSWORD)@127.0.0.1:5432/$(DB_NAME)?schema=public"
+          resources:
+            {{- toYaml .Values.resources.app | nindent 12 }}
+        - name: cloud-sql-proxy
+          image: {{ .Values.cloudSql.proxyImage }}
+          args:
+            - {{ .Values.cloudSql.connectionName | quote }}
+            - "--port=5432"
+          securityContext:
+            runAsNonRoot: true
+          resources:
+            {{- toYaml .Values.resources.cloudSqlProxy | nindent 12 }}
