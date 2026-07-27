@@ -46,10 +46,26 @@ Production workflows reuse the shared `GCP_WIF_PROVIDER` and select the prod dep
 
 ```bash
 gcloud auth application-default login
-gcloud config set project YOUR_PROJECT_ID
+gcloud config set project cointracker-interview-503623
 ```
 
+Your GCP identity needs read/write access to the state bucket (e.g. `roles/storage.objectAdmin` on `moonpay-terraform-state`).
+
 Each stack needs a `terraform.tfvars` (see `terraform.tfvars.example` in each directory). The shared stack requires `project_id` and `github_token`; staging and production only need `github_token` (and optionally `github_repository`).
+
+## Remote state backend
+
+All stacks store state in GCS:
+
+| Stack | Bucket | Prefix |
+|-------|--------|--------|
+| shared | `moonpay-terraform-state` | `shared` |
+| staging | `moonpay-terraform-state` | `staging` |
+| production | `moonpay-terraform-state` | `production` |
+
+State objects live at `gs://moonpay-terraform-state/<prefix>/default.tfstate`. The GCS backend provides native locking via `.tflock` files.
+
+Staging and production read shared outputs via `terraform_remote_state` from the same bucket (`prefix = "shared"`).
 
 ## Apply order
 
@@ -72,7 +88,29 @@ terraform init
 terraform apply
 ```
 
-Each stack maintains its own state file (`terraform.tfstate`). Staging and production can be applied independently once shared has been applied.
+Each stack maintains its own state in the GCS bucket above. Staging and production can be applied independently once shared has been applied.
+
+## Remote backend migration (from local state)
+
+If a stack still has local `terraform.tfstate` files, migrate them to GCS in order — shared must be migrated before staging/production, because those stacks read shared outputs from GCS.
+
+```bash
+# Backup local state (optional safety net)
+cp terraform/shared/terraform.tfstate terraform/shared/terraform.tfstate.pre-gcs-backup
+cp terraform/staging/terraform.tfstate terraform/staging/terraform.tfstate.pre-gcs-backup
+cp terraform/production/terraform.tfstate terraform/production/terraform.tfstate.pre-gcs-backup
+
+cd terraform/shared && echo "yes" | terraform init -migrate-state
+cd ../staging   && echo "yes" | terraform init -migrate-state
+cd ../production && echo "yes" | terraform init -migrate-state
+
+# Verify no drift
+cd ../shared     && terraform plan
+cd ../staging    && terraform plan
+cd ../production && terraform plan
+```
+
+Local `*.tfstate` files are gitignored and can be deleted after a successful migration.
 
 ## State migration (from flat root)
 
