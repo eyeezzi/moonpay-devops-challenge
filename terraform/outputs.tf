@@ -29,8 +29,23 @@ output "deployer_service_account_email" {
 }
 
 output "cloud_sql_connection_name" {
-  description = "Cloud SQL instance connection name for Cloud Run --add-cloudsql-instances"
+  description = "Cloud SQL instance connection name for Cloud SQL Auth Proxy"
   value       = google_sql_database_instance.app.connection_name
+}
+
+output "gke_cluster_name" {
+  description = "GKE cluster name"
+  value       = google_container_cluster.app.name
+}
+
+output "gke_cluster_location" {
+  description = "GKE cluster location (zone)"
+  value       = google_container_cluster.app.location
+}
+
+output "app_runtime_service_account_email" {
+  description = "Email of the GKE application runtime service account"
+  value       = google_service_account.app_runtime.email
 }
 
 output "cloud_sql_instance_name" {

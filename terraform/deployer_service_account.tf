@@ -8,7 +8,7 @@ resource "google_service_account" "deployer" {
 locals {
   deployer_roles = toset([
     "roles/artifactregistry.writer",
-    "roles/run.admin",
+    "roles/container.developer",
     "roles/iam.serviceAccountUser",
     "roles/cloudsql.client",
   ])
