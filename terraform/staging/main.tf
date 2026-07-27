@@ -32,10 +32,9 @@ module "environment" {
   workload_identity_pool_name = data.terraform_remote_state.shared.outputs.workload_identity_pool_name
   workload_identity_provider  = data.terraform_remote_state.shared.outputs.workload_identity_provider
 
-  gke_cluster_name          = "moonpay"
-  gke_zone                  = "us-central1-a"
-  gke_namespace             = "moonpay"
-  cloud_sql_instance_name   = "moonpay-db"
+  gke_cluster_name        = "moonpay"
+  gke_zone                = "us-central1-a"
+  cloud_sql_instance_name = "moonpay-db"
   deployer_sa_account_id    = "github-deployer"
   app_runtime_sa_account_id = "app-runtime"
 }

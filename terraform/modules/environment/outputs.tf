@@ -45,6 +45,6 @@ output "gke_cluster_location" {
 }
 
 output "gke_namespace" {
-  description = "Kubernetes namespace for application deployments"
+  description = "Kubernetes namespace for production deployments (null for staging; PR previews use pr-<number>)"
   value       = var.gke_namespace
 }

@@ -20,9 +20,19 @@ resource "google_project_iam_member" "app_runtime" {
 }
 
 resource "google_service_account_iam_member" "app_workload_identity" {
+  count = var.environment == "production" ? 1 : 0
+
   service_account_id = google_service_account.app_runtime.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[${var.gke_namespace}/${var.gke_service_account_name}]"
 
   depends_on = [google_container_cluster.app]
+}
+
+resource "google_service_account_iam_member" "deployer_app_runtime_admin" {
+  count = var.environment == "staging" ? 1 : 0
+
+  service_account_id = google_service_account.app_runtime.name
+  role               = "roles/iam.serviceAccountAdmin"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
 }

@@ -29,6 +29,7 @@ env:
   IMAGE_TAG: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
   DEPLOYMENT_NAME: moonpay-app-pr-${{ github.event.pull_request.number }}
   PR_NUMBER: ${{ github.event.pull_request.number }}
+  PR_NAMESPACE: pr-${{ github.event.pull_request.number }}
   USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
 
 jobs:
@@ -94,18 +95,26 @@ jobs:
             --zone="${GKE_CLUSTER_LOCATION}" \
             --project="${GCP_PROJECT_ID}"
 
+      - name: Bind Workload Identity for PR namespace
+        run: |
+          gcloud iam service-accounts add-iam-policy-binding "${APP_RUNTIME_GCP_SA}" \
+            --project="${GCP_PROJECT_ID}" \
+            --role="roles/iam.workloadIdentityUser" \
+            --member="serviceAccount:${GCP_PROJECT_ID}.svc.id.goog[${PR_NAMESPACE}/app]"
+
       - name: Deploy to GKE
         env:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          kubectl create namespace moonpay --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace "${PR_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
           kubectl create secret generic db-credentials \
-            --namespace=moonpay \
+            --namespace="${PR_NAMESPACE}" \
             --from-literal=password="${DB_PASSWORD}" \
             --dry-run=client -o yaml | kubectl apply -f -
           helm upgrade --install "${DEPLOYMENT_NAME}" ./helm/moonpay-app \
-            --namespace moonpay \
+            --namespace "${PR_NAMESPACE}" \
             --create-namespace \
+            --set namespace="${PR_NAMESPACE}" \
             --set image.repository="${ARTIFACT_REGISTRY_URL}" \
             --set image.tag="${IMAGE_TAG}" \
             --set cloudSql.connectionName="${CLOUD_SQL_CONNECTION_NAME}" \
@@ -124,7 +133,7 @@ jobs:
 
           \`\`\`bash
           gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone=${GKE_CLUSTER_LOCATION} --project=${GCP_PROJECT_ID}
-          kubectl port-forward -n moonpay svc/${DEPLOYMENT_NAME} 3000:3000
+          kubectl port-forward -n ${PR_NAMESPACE} svc/${DEPLOYMENT_NAME} 3000:3000
           \`\`\`
 
           Then open http://localhost:3000"

@@ -86,8 +86,9 @@ variable "gke_node_machine_type" {
 }
 
 variable "gke_namespace" {
-  description = "Kubernetes namespace for application deployments"
+  description = "Kubernetes namespace for production Workload Identity binding (staging PR namespaces are managed by CI)"
   type        = string
+  default     = null
 }
 
 variable "gke_service_account_name" {
