@@ -15,6 +15,12 @@ variable "github_repository" {
   default     = "eyeezzi/moonpay-devops-challenge"
 }
 
+variable "github_token" {
+  description = "GitHub PAT for managing Actions variables/secrets (repo scope)"
+  type        = string
+  sensitive   = true
+}
+
 variable "artifact_registry_repository_id" {
   description = "Artifact Registry repository ID for Docker images"
   type        = string

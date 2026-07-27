@@ -1,39 +1,73 @@
-name: PR Build and Push to GHCR
+name: PR Build and Deploy Preview
 
 on:
   pull_request:
     branches:
       - main
 
+concurrency:
+  group: pr-deploy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
-  packages: write
+  id-token: write
+  pull-requests: write
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+  GCP_SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT }}
+  ARTIFACT_REGISTRY_URL: ${{ vars.ARTIFACT_REGISTRY_URL }}
+  CLOUD_SQL_CONNECTION_NAME: ${{ vars.CLOUD_SQL_CONNECTION_NAME }}
+  DB_USER: ${{ vars.DB_USER }}
+  DB_NAME: ${{ vars.DB_NAME }}
+  IMAGE_TAG: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+  SERVICE_NAME: moonpay-app-pr-${{ github.event.pull_request.number }}
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run database migrations
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          curl -fsSL -o cloud-sql-proxy \
+            https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.3/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy "${CLOUD_SQL_CONNECTION_NAME}" --port 5432 &
+          PROXY_PID=$!
+          trap "kill ${PROXY_PID}" EXIT
+          sleep 3
+          corepack enable
+          pnpm install --frozen-lockfile
+          POSTGRES_PRISMA_URL="postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}?schema=public" \
+            pnpm exec prisma migrate deploy
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=pr
-            type=sha,format=short
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -41,7 +75,34 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.ARTIFACT_REGISTRY_URL }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Deploy Cloud Run preview
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          POSTGRES_PRISMA_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost/${DB_NAME}?host=/cloudsql/${CLOUD_SQL_CONNECTION_NAME}&schema=public"
+          gcloud run deploy "${SERVICE_NAME}" \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --image="${ARTIFACT_REGISTRY_URL}:${IMAGE_TAG}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=3000 \
+            --service-account="${GCP_SERVICE_ACCOUNT}" \
+            --add-cloudsql-instances="${CLOUD_SQL_CONNECTION_NAME}" \
+            --set-env-vars="POSTGRES_PRISMA_URL=${POSTGRES_PRISMA_URL}"
+
+      - name: Post preview URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          URL=$(gcloud run services describe "${SERVICE_NAME}" \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --format='value(status.url)')
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "Preview deployed to ${URL}"
