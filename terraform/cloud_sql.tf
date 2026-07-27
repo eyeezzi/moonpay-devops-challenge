@@ -12,7 +12,7 @@ resource "google_sql_database_instance" "app" {
 
   settings {
     tier              = var.cloud_sql_tier
-    edition = "ENTERPRISE"
+    edition           = "ENTERPRISE"
     availability_type = "ZONAL"
 
     backup_configuration {

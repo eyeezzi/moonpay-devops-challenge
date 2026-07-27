@@ -62,3 +62,33 @@ variable "db_user" {
   type        = string
   default     = "app"
 }
+
+variable "gke_cluster_name" {
+  description = "GKE cluster name"
+  type        = string
+  default     = "moonpay"
+}
+
+variable "gke_zone" {
+  description = "GKE cluster zone"
+  type        = string
+  default     = "us-central1-a"
+}
+
+variable "gke_node_machine_type" {
+  description = "Machine type for GKE node pool"
+  type        = string
+  default     = "e2-medium"
+}
+
+variable "gke_namespace" {
+  description = "Kubernetes namespace for application deployments"
+  type        = string
+  default     = "moonpay"
+}
+
+variable "gke_service_account_name" {
+  description = "Kubernetes service account name for application pods"
+  type        = string
+  default     = "app"
+}

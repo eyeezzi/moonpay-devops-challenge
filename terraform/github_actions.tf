@@ -52,7 +52,25 @@ resource "github_actions_variable" "db_name" {
 }
 
 resource "github_actions_secret" "db_password" {
-  repository = local.github_repo
+  repository  = local.github_repo
   secret_name = "DB_PASSWORD"
   value       = random_password.db.result
+}
+
+resource "github_actions_variable" "gke_cluster_name" {
+  repository    = local.github_repo
+  variable_name = "GKE_CLUSTER_NAME"
+  value         = google_container_cluster.app.name
+}
+
+resource "github_actions_variable" "gke_cluster_location" {
+  repository    = local.github_repo
+  variable_name = "GKE_CLUSTER_LOCATION"
+  value         = google_container_cluster.app.location
+}
+
+resource "github_actions_variable" "app_runtime_gcp_sa" {
+  repository    = local.github_repo
+  variable_name = "APP_RUNTIME_GCP_SA"
+  value         = google_service_account.app_runtime.email
 }
