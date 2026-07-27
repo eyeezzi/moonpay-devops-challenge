@@ -15,7 +15,7 @@ output "artifact_registry_repository" {
 
 output "artifact_registry_url" {
   description = "Docker image URL prefix for Artifact Registry"
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}"
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.artifact_registry_image_name}"
 }
 
 output "workload_identity_provider" {

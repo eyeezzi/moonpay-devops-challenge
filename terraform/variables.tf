@@ -27,6 +27,12 @@ variable "artifact_registry_repository_id" {
   default     = "moonpay-app"
 }
 
+variable "artifact_registry_image_name" {
+  description = "Docker image name within the Artifact Registry repository"
+  type        = string
+  default     = "app"
+}
+
 variable "cloud_sql_instance_name" {
   description = "Cloud SQL instance name"
   type        = string

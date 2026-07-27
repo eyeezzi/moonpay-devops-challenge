@@ -30,7 +30,7 @@ resource "github_actions_variable" "gcp_region" {
 resource "github_actions_variable" "artifact_registry_url" {
   repository    = local.github_repo
   variable_name = "ARTIFACT_REGISTRY_URL"
-  value         = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}"
+  value         = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.artifact_registry_image_name}"
 }
 
 resource "github_actions_variable" "cloud_sql_connection_name" {
