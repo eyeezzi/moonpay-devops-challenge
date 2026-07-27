@@ -1,3 +1,4 @@
+# Overridden by PR deploy workflow to pr-<number>; production uses values-production.yaml
 namespace: moonpay
 nameOverride: moonpay-app
 

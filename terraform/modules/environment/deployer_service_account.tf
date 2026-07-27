@@ -1,8 +1,7 @@
 resource "google_service_account" "deployer" {
-  account_id   = "github-deployer"
-  display_name = "GitHub Actions deployer service account"
-
-  depends_on = [google_project_service.required]
+  account_id   = var.deployer_sa_account_id
+  display_name = "GitHub Actions deployer (${var.environment})"
+  project      = var.project_id
 }
 
 locals {

@@ -6,13 +6,16 @@ variable "project_id" {
 variable "region" {
   description = "GCP region for regional resources"
   type        = string
-  default     = "us-central1"
+}
+
+variable "environment" {
+  description = "Environment name (staging or production)"
+  type        = string
 }
 
 variable "github_repository" {
   description = "GitHub repository allowed to authenticate via Workload Identity Federation (owner/repo)"
   type        = string
-  default     = "eyeezzi/moonpay-devops-challenge"
 }
 
 variable "github_token" {
@@ -21,22 +24,25 @@ variable "github_token" {
   sensitive   = true
 }
 
-variable "artifact_registry_repository_id" {
-  description = "Artifact Registry repository ID for Docker images"
+variable "github_var_prefix" {
+  description = "Prefix for GitHub Actions variable/secret names (e.g. PROD_ for production)"
   type        = string
-  default     = "moonpay-app"
+  default     = ""
 }
 
-variable "artifact_registry_image_name" {
-  description = "Docker image name within the Artifact Registry repository"
+variable "workload_identity_pool_name" {
+  description = "Full resource name of the shared Workload Identity pool"
   type        = string
-  default     = "app"
+}
+
+variable "workload_identity_provider" {
+  description = "Full resource name of the shared Workload Identity provider"
+  type        = string
 }
 
 variable "cloud_sql_instance_name" {
   description = "Cloud SQL instance name"
   type        = string
-  default     = "moonpay-db"
 }
 
 variable "cloud_sql_tier" {
@@ -66,13 +72,11 @@ variable "db_user" {
 variable "gke_cluster_name" {
   description = "GKE cluster name"
   type        = string
-  default     = "moonpay"
 }
 
 variable "gke_zone" {
   description = "GKE cluster zone"
   type        = string
-  default     = "us-central1-a"
 }
 
 variable "gke_node_machine_type" {
@@ -82,13 +86,23 @@ variable "gke_node_machine_type" {
 }
 
 variable "gke_namespace" {
-  description = "Kubernetes namespace for application deployments"
+  description = "Kubernetes namespace for production Workload Identity binding (staging PR namespaces are managed by CI)"
   type        = string
-  default     = "moonpay"
+  default     = null
 }
 
 variable "gke_service_account_name" {
   description = "Kubernetes service account name for application pods"
   type        = string
   default     = "app"
+}
+
+variable "deployer_sa_account_id" {
+  description = "Account ID for the GitHub Actions deployer service account"
+  type        = string
+}
+
+variable "app_runtime_sa_account_id" {
+  description = "Account ID for the GKE application runtime service account"
+  type        = string
 }

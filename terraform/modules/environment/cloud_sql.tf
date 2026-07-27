@@ -7,6 +7,7 @@ resource "google_sql_database_instance" "app" {
   name             = var.cloud_sql_instance_name
   database_version = "POSTGRES_17"
   region           = var.region
+  project          = var.project_id
 
   deletion_protection = var.cloud_sql_deletion_protection
 
@@ -25,17 +26,17 @@ resource "google_sql_database_instance" "app" {
       ssl_mode     = "ENCRYPTED_ONLY"
     }
   }
-
-  depends_on = [google_project_service.required]
 }
 
 resource "google_sql_database" "app" {
   name     = var.db_name
   instance = google_sql_database_instance.app.name
+  project  = var.project_id
 }
 
 resource "google_sql_user" "app" {
   name     = var.db_user
   instance = google_sql_database_instance.app.name
+  project  = var.project_id
   password = random_password.db.result
 }
