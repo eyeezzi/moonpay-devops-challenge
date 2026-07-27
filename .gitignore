@@ -40,3 +40,11 @@ yarn-error.log*
 
 prisma/generated
 .pnpm-store
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
