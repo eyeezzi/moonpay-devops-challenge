@@ -34,7 +34,8 @@ module "environment" {
   workload_identity_provider  = data.terraform_remote_state.shared.outputs.workload_identity_provider
 
   gke_cluster_name          = "moonpay-prod"
-  gke_zone                  = "us-central1-b"
+  gke_zone                  = "us-central1-a"
+  gke_deletion_protection   = false
   gke_namespace             = "production"
   cloud_sql_instance_name   = "moonpay-prod-db"
   deployer_sa_account_id    = "github-deployer-prod"

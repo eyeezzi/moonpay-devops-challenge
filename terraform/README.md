@@ -19,7 +19,7 @@ terraform/
 | GCP APIs | yes | | |
 | Artifact Registry (`moonpay-app`) | yes | | |
 | WIF pool + OIDC provider | yes | | |
-| GKE cluster | | `moonpay` (us-central1-a) | `moonpay-prod` (us-central1-b) |
+| GKE cluster | | `moonpay` (us-central1-a) | `moonpay-prod` (us-central1-a) |
 | Cloud SQL | | `moonpay-db` | `moonpay-prod-db` |
 | Deployer SA | | `github-deployer` | `github-deployer-prod` |
 | App runtime SA | | `app-runtime` | `app-runtime-prod` |

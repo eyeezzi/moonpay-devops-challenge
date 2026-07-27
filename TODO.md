@@ -14,6 +14,8 @@
     - [ ] Handle DB migrations
         - Preview apps should not be running migrations against the same DB instance.
     - [ ] Cleanup preview environment when PR is closed/merged.
+    - [ ] Separate the image build+push from app deploy into separate CI jobs so they can be independently rerun.
+    - [ ] Factor out common steps between the preview and production workflows into a reusable workflow.
 - [ ] IAC to run the app.
     - [ ] Google Artefact Registry to store the application image
     - [ ] Create CloudSQL instance for the database
