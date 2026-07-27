@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${DEPLOYMENT_NAME}
+  namespace: moonpay
+  labels:
+    app: moonpay
+    pr: "${PR_NUMBER}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moonpay
+      pr: "${PR_NUMBER}"
+  template:
+    metadata:
+      labels:
+        app: moonpay
+        pr: "${PR_NUMBER}"
+    spec:
+      serviceAccountName: app
+      containers:
+        - name: app
+          image: ${ARTIFACT_REGISTRY_URL}:${IMAGE_TAG}
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DB_USER
+              value: "${DB_USER}"
+            - name: DB_NAME
+              value: "${DB_NAME}"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: POSTGRES_PRISMA_URL
+              value: "postgresql://$(DB_USER):$(DB_PASSWORD)@127.0.0.1:5432/$(DB_NAME)?schema=public"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.3
+          args:
+            - "${CLOUD_SQL_CONNECTION_NAME}"
+            - "--port=5432"
+          securityContext:
+            runAsNonRoot: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
