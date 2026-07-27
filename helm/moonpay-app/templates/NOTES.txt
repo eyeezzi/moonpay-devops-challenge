@@ -1,0 +1,17 @@
+MoonPay app deployed as release {{ .Release.Name }} in namespace {{ .Values.namespace }}.
+
+{{- if eq .Values.service.type "LoadBalancer" }}
+
+Get the external IP:
+  kubectl get svc {{ include "moonpay-app.fullname" . }} -n {{ .Values.namespace }}
+
+Once EXTERNAL-IP is assigned, open http://<EXTERNAL-IP>:{{ .Values.service.port }}
+
+{{- else }}
+
+Preview uses ClusterIP. Port-forward locally:
+  kubectl port-forward -n {{ .Values.namespace }} svc/{{ include "moonpay-app.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+Then open http://localhost:{{ .Values.service.port }}
+
+{{- end }}
