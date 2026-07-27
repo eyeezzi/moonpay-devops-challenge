@@ -11,12 +11,17 @@
     - [ ] Create Github Actions Workflow to build and deploy merges to main
         - run migration on prod cloudsql instance
         - deploy k8s manifests to 'prod' namespace in cluster.
+    - [ ] Handle DB migrations
+        - Preview apps should not be running migrations against the same DB instance.
+    - [ ] Cleanup preview environment when PR is closed/merged.
 - [ ] IAC to run the app.
     - [ ] Google Artefact Registry to store the application image
     - [ ] Create CloudSQL instance for the database
         - make private, no public IP.
     - [ ] Create GKE cluster to run the application image
-    - [ ] Move Terraform state to a remote GCS bucket
+    - [x] Move Terraform state to a remote GCS bucket
+    - [ ] Use separate GCP projects for staging and prod infra.
+    - [ ] Buy a domain name and point it to prod Gateway
 
 ## Setup commands
 ```

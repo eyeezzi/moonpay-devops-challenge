@@ -1,8 +1,9 @@
 data "terraform_remote_state" "shared" {
-  backend = "local"
+  backend = "gcs"
 
   config = {
-    path = abspath("${path.module}/../shared/terraform.tfstate")
+    bucket = "moonpay-terraform-state"
+    prefix = "shared"
   }
 }
 
